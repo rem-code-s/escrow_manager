@@ -14,6 +14,7 @@ import Escrow       "./escrow";
 import Hex          "./hex";
 import Types        "./types";
 import Utils        "./utils";
+import testBTCCanister    "./testBTCCanister";
 
 actor EscrowManager {
 
@@ -47,7 +48,7 @@ actor EscrowManager {
     // canister's code due to a glitch, we use this function to temporarily take
     // control of the escrow canister.
     // TODO: Remove this function.
-    public func takeover (canister : Text) : async definite_canister_settings { 
+    public func takeover (canister : Text) : async definite_canister_settings {
         let ManagementCanister = actor "aaaaa-aa" : actor {
             canister_status : shared { canister_id : canister_id } -> async {
                 status : { #running; #stopping; #stopped };
@@ -63,8 +64,9 @@ actor EscrowManager {
         };
         let canister_id = Principal.fromText(canister);
         let newControllers = [
+            Principal.fromText("ryjl3-tyaaa-aaaaa-aaaba-cai"),
             Principal.fromText("3fhg4-qiaaa-aaaak-aajiq-cai"),
-            Principal.fromText("xohn2-daaaa-aaaak-aadvq-cai") 
+            Principal.fromText("xohn2-daaaa-aaaak-aadvq-cai")
         ];
         await ManagementCanister.update_settings({ canister_id = canister_id; settings = {
             controllers = ?newControllers;
@@ -95,16 +97,24 @@ actor EscrowManager {
     };
 
     // TODO: Remove self as controller of created escrow canister to turn the canister into true "black hole" canister.
-    public shared(msg) func createEscrowCanister (p: ProjectId, recipient: Principal, nfts: [NFTInfo], endTime : Time.Time, maxNFTsPerWallet : Nat) : async () {
+    public shared(msg) func createEscrowCanister (p: ProjectId, recipientICP: Principal, recipientBTC: Text, nfts: [NFTInfo], endTime : Time.Time, maxNFTsPerWallet : Nat) : async () {
         assert(isAdmin(msg.caller));
         switch (getProjectEscrowCanister(p)) {
             case (?canister) { throw Error.reject("Project already has an escrow canister: " # Principal.toText(canister)); };
             case (null) {
                 Cycles.add(1000000000000);
-                let canister = await Escrow.EscrowCanister(p, recipient, nfts, endTime, maxNFTsPerWallet);
+                let canister = await Escrow.EscrowCanister(p, recipientICP, recipientBTC, nfts, endTime, maxNFTsPerWallet);
                 escrowCanisters := Trie.putFresh<ProjectIdText, CanisterId>(escrowCanisters, projectIdKey(p), Text.equal, Principal.fromActor(canister));
             };
         };
+    };
+
+    //For mimicing bitcoin transfers by users in testing
+    public shared(msg) func createBTCWalletCanister () : async (Principal) {
+        assert(isAdmin(msg.caller));
+        Cycles.add(1000000000000);
+        let canister = await testBTCCanister.TestBTCCanister();
+        await canister.get_principal();
     };
 
     func getProjectEscrowCanister (p: ProjectId) : ?CanisterId {
@@ -120,7 +130,7 @@ actor EscrowManager {
             case (null) { throw Error.reject("Project has no escrow canister"); };
         };
     };
-    
+
     // helpers
 
     func projectIdKey (p: ProjectId) : Trie.Key<ProjectIdText> {
