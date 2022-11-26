@@ -14,7 +14,7 @@ import Escrow       "./escrow";
 import Hex          "./hex";
 import Types        "./types";
 import Utils        "./utils";
-import testBTCCanister    "./testBTCCanister";
+//import testBTCCanister    "./testBTCCanister";
 
 actor EscrowManager {
 
@@ -64,7 +64,6 @@ actor EscrowManager {
         };
         let canister_id = Principal.fromText(canister);
         let newControllers = [
-            Principal.fromText("ryjl3-tyaaa-aaaaa-aaaba-cai"),
             Principal.fromText("3fhg4-qiaaa-aaaak-aajiq-cai"),
             Principal.fromText("xohn2-daaaa-aaaak-aadvq-cai")
         ];
@@ -109,13 +108,15 @@ actor EscrowManager {
         };
     };
 
-    //For mimicing bitcoin transfers by users in testing
+    //For mimicking bitcoin transfers by users in testing
+    /*
     public shared(msg) func createBTCWalletCanister () : async (Principal) {
         assert(isAdmin(msg.caller));
         Cycles.add(1000000000000);
         let canister = await testBTCCanister.TestBTCCanister();
         await canister.get_principal();
     };
+    */
 
     func getProjectEscrowCanister (p: ProjectId) : ?CanisterId {
         Trie.get<ProjectIdText, CanisterId>(escrowCanisters, projectIdKey(p), Text.equal);
